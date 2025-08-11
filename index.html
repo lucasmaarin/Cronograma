@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cronograma</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-database-compat.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 15px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #4f46e5;
+            color: white;
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .add-event-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        .add-event-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .calendar-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+            background: #fff;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .nav-btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background: #4338ca;
+        }
+
+        .current-month {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #374151;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            margin: 0 20px 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .day-header {
+            background: #f9fafb;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 0.85em;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .day-cell {
+            background: white;
+            min-height: 100px;
+            padding: 8px;
+            border-right: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .day-cell:hover {
+            background: #f9fafb;
+        }
+
+        .day-cell:nth-child(7n) {
+            border-right: none;
+        }
+
+        .day-number {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 0.9em;
+        }
+
+        .day-cell.other-month .day-number {
+            color: #d1d5db;
+        }
+
+        .day-cell.today {
+            background: #eff6ff;
+            border-color: #3b82f6;
+        }
+
+        .day-cell.today .day-number {
+            color: #3b82f6;
+            font-weight: 700;
+        }
+
+        .event {
+            background: #3b82f6;
+            color: white;
+            padding: 2px 6px;
+            margin: 1px 0;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 500;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: background 0.2s ease;
+        }
+
+        .event:hover {
+            background: #2563eb;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            background: #4f46e5;
+            color: white;
+            padding: 20px 24px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-weight: 600;
+            font-size: 1.25em;
+            margin: 0;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            transform: scale(1.1);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9em;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            color: #374151;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid #4f46e5;
+            z-index: 1100;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 300px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left-color: #10b981;
+        }
+
+        .notification.error {
+            border-left-color: #dc2626;
+        }
+
+        .event-details {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .event-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.85em;
+            color: #6b7280;
+        }
+
+        .event-description {
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-grid {
+                margin: 0 10px;
+            }
+
+            .add-event-btn {
+                position: static;
+                transform: none;
+                margin-top: 15px;
+            }
+
+            .header {
+                text-align: center;
+            }
+
+            .day-cell {
+                min-height: 80px;
+                padding: 5px;
+            }
+
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cronograma</h1>
+            <button class="add-event-btn" onclick="openEventModal()">+ Novo Propósito</button>
+        </div>
+
+        <div class="calendar-nav">
+            <button class="nav-btn" onclick="previousMonth()">‹ Anterior</button>
+            <div class="current-month" id="currentMonth"></div>
+            <button class="nav-btn" onclick="nextMonth()">Próximo ›</button>
+        </div>
+
+        <div class="calendar-grid" id="calendar"></div>
+    </div>
+
+    <!-- Modal para Adicionar/Editar Propósito -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Adicionar Propósito</h2>
+                <span class="close" onclick="closeEventModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <div class="form-group">
+                        <label for="eventTitle">Título do Propósito</label>
+                        <input type="text" id="eventTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDate">Data</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDescription">Descrição</label>
+                        <textarea id="eventDescription" placeholder="Descreva o Propósito..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventAuthor">Adicionado por</label>
+                        <input type="text" id="eventAuthor" required placeholder="Seu nome">
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-secondary" onclick="closeEventModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Propósito</button>
+                        <button type="button" class="btn btn-danger" id="deleteBtn" onclick="deleteEvent()"
+                            style="display: none;">Excluir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Visualizar Propósito -->
+    <div id="viewEventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Detalhes do Propósito</h2>
+                <span class="close" onclick="closeViewEventModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="eventDetailsContent">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Firebase - SUBSTITUA PELA SUA CONFIGURAÇÃO
+        const firebaseConfig = {
+            apiKey: "AIzaSyAz7EaASw3bGM2KYcN1PFo4QbdzC8_lfdU",
+            authDomain: "eventos-rdr.firebaseapp.com",
+            databaseURL: "https://eventos-rdr-default-rtdb.firebaseio.com",
+            projectId: "eventos-rdr",
+            storageBucket: "eventos-rdr.firebasestorage.app",
+            messagingSenderId: "820714214725",
+            appId: "1:820714214725:web:c48ec5ea89a4281c8c9a2c",
+            measurementId: "G-5S05E5C37J"
+        };
+
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const eventsRef = database.ref('events');
+
+        let currentDate = new Date();
+        let events = {};
+        let editingEventId = null;
+
+        // Solicitar permissão para notificações
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Função para mostrar notificação
+        function showNotification(title, body, type = 'info') {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" font-size="80" text-anchor="middle" dominant-baseline="central">📅</text></svg>'
+                });
+            }
+
+            // Notificação visual na página
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<strong>${title}</strong><br>${body}`;
+            document.body.appendChild(notification);
+
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 4000);
+        }
+
+        // Referência para eventos pendentes
+        const pendingEventsRef = database.ref('pendingEvents');
+
+        // Escutar mudanças no banco de dados
+        eventsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            events = data || {};
+            renderCalendar();
+        });
+
+        eventsRef.on('child_added', (snapshot) => {
+            if (Object.keys(events).length > 0) { // Evita notificar no carregamento inicial
+                const event = snapshot.val();
+                showNotification('✅ Propósito Aprovado', `${event.title} foi adicionado ao calendário`, 'success');
+            }
+        });
+
+        eventsRef.on('child_changed', (snapshot) => {
+            const event = snapshot.val();
+            showNotification('📝 Propósito Atualizado', `${event.title} foi modificado`, 'info');
+        });
+
+        eventsRef.on('child_removed', (snapshot) => {
+            const event = snapshot.val();
+            showNotification('🗑️ Propósito Removido', `${event.title} foi excluído`, 'error');
+        });
+
+        // Variável para controlar se é o primeiro carregamento
+        let pendingEventsLoaded = false;
+
+        // Escutar eventos enviados para aprovação
+        pendingEventsRef.on('child_added', (snapshot) => {
+            if (pendingEventsLoaded) { // Só notifica após o carregamento inicial
+                const event = snapshot.val();
+                showNotification('⏳ Enviado para Aprovação', `${event.title} aguarda análise`, 'info');
+            }
+        });
+
+        // Marcar como carregado após o primeiro load
+        pendingEventsRef.once('value', () => {
+            pendingEventsLoaded = true;
+        });
+
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            const monthElement = document.getElementById('currentMonth');
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            monthElement.textContent = new Date(year, month).toLocaleDateString('pt-BR', {
+                month: 'long',
+                year: 'numeric'
+            });
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            calendar.innerHTML = '';
+
+            // Cabeçalhos dos dias
+            const dayHeaders = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            dayHeaders.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                calendar.appendChild(dayHeader);
+            });
+
+            // Células dos dias
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+
+                const dayCell = document.createElement('div');
+                dayCell.className = 'day-cell';
+
+                if (date.getMonth() !== month) {
+                    dayCell.classList.add('other-month');
+                }
+
+                const today = new Date();
+                if (date.toDateString() === today.toDateString()) {
+                    dayCell.classList.add('today');
+                }
+
+                dayCell.innerHTML = `<div class="day-number">${date.getDate()}</div>`;
+
+                const dateString = date.toISOString().split('T')[0];
+                const dayEvents = Object.values(events).filter(event => event.date === dateString);
+
+                dayEvents.forEach(event => {
+                    const eventElement = document.createElement('div');
+                    eventElement.className = 'event';
+                    eventElement.textContent = event.title;
+                    eventElement.onclick = (e) => {
+                        e.stopPropagation();
+                        viewEvent(event);
+                    };
+                    dayCell.appendChild(eventElement);
+                });
+
+                dayCell.onclick = () => openEventModal(dateString);
+                calendar.appendChild(dayCell);
+            }
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        function openEventModal(date = null) {
+            const modal = document.getElementById('eventModal');
+            const form = document.getElementById('eventForm');
+            const title = document.getElementById('modalTitle');
+            const deleteBtn = document.getElementById('deleteBtn');
+
+            form.reset();
+            editingEventId = null;
+            title.textContent = 'Adicionar Propósito';
+            deleteBtn.style.display = 'none';
+
+            if (date) {
+                document.getElementById('eventDate').value = date;
+            }
+
+            modal.style.display = 'block';
+            document.getElementById('eventTitle').focus();
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').style.display = 'none';
+        }
+
+        function viewEvent(event) {
+            const modal = document.getElementById('viewEventModal');
+            const content = document.getElementById('eventDetailsContent');
+
+            content.innerHTML = `
+                <div class="event-details">
+                    <div class="event-meta">
+                        <span>📅 ${formatDate(event.date)}</span>
+                        <span>👤 ${event.author}</span>
+                    </div>
+                    <h3 style="margin-bottom: 15px; color: #333;">${event.title}</h3>
+                    <div class="event-description">${event.description || 'Sem descrição'}</div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="closeViewEventModal()">Fechar</button>
+                    <button class="btn btn-primary" onclick="editEvent('${event.id}')">Editar</button>
+                </div>
+            `;
+
+            modal.style.display = 'block';
+        }
+
+        function closeViewEventModal() {
+            document.getElementById('viewEventModal').style.display = 'none';
+        }
+
+        function editEvent(eventId) {
+            closeViewEventModal();
+
+            const event = events[eventId];
+            if (!event) return;
+
+            editingEventId = eventId;
+
+            document.getElementById('eventTitle').value = event.title;
+            document.getElementById('eventDate').value = event.date;
+            document.getElementById('eventDescription').value = event.description || '';
+            document.getElementById('eventAuthor').value = event.author;
+
+            document.getElementById('modalTitle').textContent = 'Editar Propósito';
+            document.getElementById('deleteBtn').style.display = 'block';
+            document.getElementById('eventModal').style.display = 'block';
+        }
+
+        function deleteEvent() {
+            if (!editingEventId) return;
+
+            if (confirm('Tem certeza que deseja excluir este Propósito?')) {
+                eventsRef.child(editingEventId).remove();
+                closeEventModal();
+            }
+        }
+
+        // Submissão do formulário
+        document.getElementById('eventForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const title = document.getElementById('eventTitle').value;
+            const date = document.getElementById('eventDate').value;
+            const description = document.getElementById('eventDescription').value;
+            const author = document.getElementById('eventAuthor').value;
+
+            const eventData = {
+                title,
+                date,
+                description,
+                author,
+                createdAt: new Date().toISOString()
+            };
+
+            if (editingEventId) {
+                // Edições são aplicadas diretamente (já aprovados)
+                eventsRef.child(editingEventId).update(eventData);
+                showNotification('✅ Propósito Salvo', 'Suas alterações foram aplicadas', 'success');
+            } else {
+                // Novos Propósitos vão para aprovação
+                const newPendingRef = pendingEventsRef.push();
+                eventData.id = newPendingRef.key;
+                newPendingRef.set(eventData);
+                // Removi a notificação daqui pois ela será disparada pelo listener
+            }
+
+            closeEventModal();
+        });
+
+        // Fechar modals clicando fora
+        window.onclick = function (event) {
+            const eventModal = document.getElementById('eventModal');
+            const viewEventModal = document.getElementById('viewEventModal');
+
+            if (event.target === eventModal) {
+                closeEventModal();
+            }
+            if (event.target === viewEventModal) {
+                closeViewEventModal();
+            }
+        };
+
+        // Inicializar calendário
+        renderCalendar();
+    </script>
+</body>
+
+</html>
