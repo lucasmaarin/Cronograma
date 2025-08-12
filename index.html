@@ -474,7 +474,9 @@
         </div>
     </div>
 
-    <script>
+                                                    if (event.target === viewEventModal) {
+                
+        <script>
         // Configuração do Firebase - SUBSTITUA PELA SUA CONFIGURAÇÃO
         const firebaseConfig = {
             apiKey: "AIzaSyAz7EaASw3bGM2KYcN1PFo4QbdzC8_lfdU",
@@ -579,18 +581,7 @@
             }, 4000);
         }
 
-        // Função para mostrar alert (para aprovações)
-        function showApprovalAlert(title, body) {
-            // Vibração para mobile
-            if (isMobileDevice() && 'vibrate' in navigator) {
-                navigator.vibrate([300, 100, 300, 100, 300]);
-            }
-            
-            alert(`${title}\n\n${body}`);
-        }
-
-        // Referência para eventos pendentes
-        const pendingEventsRef = database.ref('pendingEvents');
+        // Referência removida - não precisamos mais de eventos pendentes
 
         // Escutar mudanças no banco de dados
         eventsRef.on('value', (snapshot) => {
@@ -602,7 +593,7 @@
         eventsRef.on('child_added', (snapshot) => {
             if (Object.keys(events).length > 0) { // Evita notificar no carregamento inicial
                 const event = snapshot.val();
-                showNotification('✅ Propósito Aprovado', `${event.title} foi adicionado ao calendário`, 'success');
+                showNotification('✅ Propósito Adicionado', `${event.title} foi adicionado ao calendário`, 'success');
             }
         });
 
@@ -616,21 +607,7 @@
             showNotification('🗑️ Propósito Removido', `${event.title} foi excluído`, 'error');
         });
 
-        // Variável para controlar se é o primeiro carregamento
-        let pendingEventsLoaded = false;
-
-        // Escutar eventos enviados para aprovação (usando ALERT)
-        pendingEventsRef.on('child_added', (snapshot) => {
-            if (pendingEventsLoaded) { // Só notifica após o carregamento inicial
-                const event = snapshot.val();
-                showApprovalAlert('⏳ Enviado para Aprovação', `${event.title} foi enviado e aguarda análise do administrador.`);
-            }
-        });
-
-        // Marcar como carregado após o primeiro load
-        pendingEventsRef.once('value', () => {
-            pendingEventsLoaded = true;
-        });
+        // Listeners removidos - não precisamos mais de aprovação
 
         function formatDate(dateString) {
             const date = new Date(dateString + 'T00:00:00');
@@ -845,7 +822,7 @@
             };
 
             if (editingEventId) {
-                // CORREÇÃO: edições são aplicadas diretamente (já aprovados)
+                // Editando um evento existente
                 const eventKey = Object.keys(events).find(key => 
                     key === editingEventId || events[key].id === editingEventId
                 );
@@ -860,11 +837,11 @@
                 
                 showNotification('✅ Propósito Salvo', 'Suas alterações foram aplicadas', 'success');
             } else {
-                // Novos Propósitos vão para aprovação
-                const newPendingRef = pendingEventsRef.push();
-                eventData.id = newPendingRef.key;
-                newPendingRef.set(eventData);
-                // O alert será disparado pelo listener automaticamente
+                // Novo propósito - adicionar diretamente
+                const newEventRef = eventsRef.push();
+                eventData.id = newEventRef.key;
+                newEventRef.set(eventData);
+                // A notificação será disparada pelo listener automaticamente
             }
 
             closeEventModal();
@@ -899,8 +876,7 @@
             requestNotificationPermission();
             renderCalendar();
         }
-    </script>          
-        
+    </script>
 </body>
 
 </html>
