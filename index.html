@@ -353,9 +353,12 @@
         }
 
         .event-description {
-            color: #374151;
-            line-height: 1.5;
-        }
+         color: #374151;
+         line-height: 1.5;
+         white-space: normal; /* permite quebra de linha */
+         word-wrap: break-word; /* quebra palavras longas */
+         overflow-wrap: break-word; /* suporte adicional */
+      }
 
         @media (max-width: 768px) {
             .calendar-grid {
