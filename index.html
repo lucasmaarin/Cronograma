@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="icon.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-database-compat.min.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -157,23 +158,21 @@
         }
 
         .event {
-            background: #3b82f6;
-            color: white;
+            background: transparent;
+            color: #374151;
             padding: 2px 6px;
             margin: 1px 0;
             border-radius: 4px;
-            font-size: 0.7em;
+            font-size: 1.3em;
             font-weight: 500;
             cursor: pointer;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            transition: background 0.2s ease;
+            transition: transform 0.2s ease;
         }
 
-        .event:hover {
-            background: #2563eb;
-        }
+       
 
         .modal {
             display: none;
@@ -242,7 +241,8 @@
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #d1d5db;
@@ -253,7 +253,8 @@
         }
 
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
             outline: none;
             border-color: #4f46e5;
         }
@@ -261,6 +262,22 @@
         .form-group textarea {
             resize: vertical;
             min-height: 80px;
+        }
+
+        .form-group select {
+            background-color: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSI+CiAgPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNS4yOTMgNy4yOTNhMSAxIDAgMCAxIDEuNDE0IDBMMTAgMTAuNTg2bDMuMjkzLTMuMjkzYTEgMSAwIDEgMSAxLjQxNCAxLjQxNGwtNCA0YTEgMSAwIDAgMS0xLjQxNCAwbC00LTRhMSAxIDAgMCAxIDAtMS40MTR6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIC8+Cjwvc3ZnPg==');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .form-group select option {
+            padding: 8px;
+            font-size: 14px;
         }
 
         .btn-group {
@@ -353,12 +370,9 @@
         }
 
         .event-description {
-         color: #374151;
-         line-height: 1.5;
-         white-space: normal; /* permite quebra de linha */
-         word-wrap: break-word; /* quebra palavras longas */
-         overflow-wrap: break-word; /* suporte adicional */
-      }
+            color: #374151;
+            line-height: 1.5;
+        }
 
         @media (max-width: 768px) {
             .calendar-grid {
@@ -406,11 +420,10 @@
                 font-size: 10px;
                 font-weight: 500;
                 transition: background 0.2s ease;
-                
             }
-
         }
     </style>
+    
 </head>
 
 <body>
@@ -439,8 +452,15 @@
             <div class="modal-body">
                 <form id="eventForm">
                     <div class="form-group">
-                        <label for="eventTitle">Título do Propósito</label>
-                        <input type="text" id="eventTitle" required>
+                        <label for="eventType">Tipo de Propósito</label>
+                        <select id="eventType" required>
+                            <option value="">Selecione um propósito...</option>
+                            <option value="jejum-whatsapp">📵 Jejum de WhatsApp</option>
+                            <option value="jejum-alimentos">🍽️ Jejum de Alimentos</option>
+                            <option value="oracao">🙏 Oração</option>
+                            <option value="devocional">📖 Devocional</option>
+                            <option value="filme-cristao">🎬 Filme Cristão</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="eventDate">Data</label>
@@ -477,9 +497,7 @@
         </div>
     </div>
 
-                                                    
-                
-        <script>
+    <script>
         // Configuração do Firebase - SUBSTITUA PELA SUA CONFIGURAÇÃO
         const firebaseConfig = {
             apiKey: "AIzaSyAz7EaASw3bGM2KYcN1PFo4QbdzC8_lfdU",
@@ -492,6 +510,35 @@
             measurementId: "G-5S05E5C37J"
         };
 
+        // Mapeamento de tipos de propósitos
+        const purposeTypes = {
+            'jejum-whatsapp': {
+                title: 'Jejum de WhatsApp',
+                emoji: '📵',
+                displayText: '📵'
+            },
+            'jejum-alimentos': {
+                title: 'Jejum de Alimentos',
+                emoji: '🍽️',
+                displayText: '🍽️'
+            },
+            'oracao': {
+                title: 'Oração',
+                emoji: '🙏',
+                displayText: '🙏'
+            },
+            'devocional': {
+                title: 'Devocional',
+                emoji: '📖',
+                displayText: '📖'
+            },
+            'filme-cristao': {
+                title: 'Filme Cristão',
+                emoji: '🎬',
+                displayText: '🎬'
+            }
+        };
+
         // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -501,81 +548,29 @@
         let events = {};
         let editingEventId = null;
 
-        // Função melhorada para detectar dispositivos móveis
-        function isMobileDevice() {
-            return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                   window.innerWidth <= 768;
+        // Solicitar permissão para notificações
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
         }
 
-        // Solicitar permissão para notificações de forma mais robusta
-        async function requestNotificationPermission() {
-            if ('Notification' in window) {
-                if (Notification.permission === 'default') {
-                    const permission = await Notification.requestPermission();
-                    return permission === 'granted';
-                }
-                return Notification.permission === 'granted';
-            }
-            return false;
-        }
-
-        // Função para mostrar notificação melhorada para mobile
-        async function showNotification(title, body, type = 'info') {
-            // Para mobile, usar vibração se disponível
-            if (isMobileDevice() && 'vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200]);
-            }
-
-            // Tentar mostrar notificação nativa
+        // Função para mostrar notificação
+        function showNotification(title, body, type = 'info') {
             if ('Notification' in window && Notification.permission === 'granted') {
-                try {
-                    const notification = new Notification(title, {
-                        body: body,
-                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" font-size="80" text-anchor="middle" dominant-baseline="central">📅</text></svg>',
-                        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" font-size="80" text-anchor="middle" dominant-baseline="central">📅</text></svg>',
-                        tag: 'calendar-event',
-                        requireInteraction: isMobileDevice(),
-                        silent: false
-                    });
-
-                    // Auto-fechar após 4 segundos no desktop
-                    if (!isMobileDevice()) {
-                        setTimeout(() => notification.close(), 4000);
-                    }
-                } catch (error) {
-                    console.log('Erro ao mostrar notificação nativa:', error);
-                }
+                new Notification(title, {
+                    body: body,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" font-size="80" text-anchor="middle" dominant-baseline="central">📅</text></svg>'
+                });
             }
 
-            // Notificação visual na página (sempre mostrar)
+            // Notificação visual na página
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `<strong>${title}</strong><br>${body}`;
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-                color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 10000;
-                max-width: 300px;
-                transform: translateX(400px);
-                transition: transform 0.3s ease;
-                font-family: Arial, sans-serif;
-                line-height: 1.4;
-            `;
-            
             document.body.appendChild(notification);
 
+            setTimeout(() => notification.classList.add('show'), 100);
             setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 100);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(400px)';
+                notification.classList.remove('show');
                 setTimeout(() => {
                     if (document.body.contains(notification)) {
                         document.body.removeChild(notification);
@@ -584,7 +579,8 @@
             }, 4000);
         }
 
-        // Referência removida - não precisamos mais de eventos pendentes
+        // Referência para eventos pendentes
+        const pendingEventsRef = database.ref('pendingEvents');
 
         // Escutar mudanças no banco de dados
         eventsRef.on('value', (snapshot) => {
@@ -596,21 +592,39 @@
         eventsRef.on('child_added', (snapshot) => {
             if (Object.keys(events).length > 0) { // Evita notificar no carregamento inicial
                 const event = snapshot.val();
-                showNotification('✅ Propósito Adicionado', `${event.title} foi adicionado ao calendário`, 'success');
+                const purposeType = purposeTypes[event.type] || { title: event.title };
+                showNotification('✅ Propósito Aprovado', `${purposeType.title} foi adicionado ao calendário`, 'success');
             }
         });
 
         eventsRef.on('child_changed', (snapshot) => {
             const event = snapshot.val();
-            showNotification('📝 Propósito Atualizado', `${event.title} foi modificado`, 'info');
+            const purposeType = purposeTypes[event.type] || { title: event.title };
+            showNotification('📝 Propósito Atualizado', `${purposeType.title} foi modificado`, 'info');
         });
 
         eventsRef.on('child_removed', (snapshot) => {
             const event = snapshot.val();
-            showNotification('🗑️ Propósito Removido', `${event.title} foi excluído`, 'error');
+            const purposeType = purposeTypes[event.type] || { title: event.title };
+            showNotification('🗑️ Propósito Removido', `${purposeType.title} foi excluído`, 'error');
         });
 
-        // Listeners removidos - não precisamos mais de aprovação
+        // Variável para controlar se é o primeiro carregamento
+        let pendingEventsLoaded = false;
+
+        // Escutar eventos enviados para aprovação
+        pendingEventsRef.on('child_added', (snapshot) => {
+            if (pendingEventsLoaded) { // Só notifica após o carregamento inicial
+                const event = snapshot.val();
+                const purposeType = purposeTypes[event.type] || { title: event.title };
+                showNotification('⏳ Enviado para Aprovação', `${purposeType.title} aguarda análise`, 'info');
+            }
+        });
+
+        // Marcar como carregado após o primeiro load
+        pendingEventsRef.once('value', () => {
+            pendingEventsLoaded = true;
+        });
 
         function formatDate(dateString) {
             const date = new Date(dateString + 'T00:00:00');
@@ -670,7 +684,11 @@
                 dayEvents.forEach(event => {
                     const eventElement = document.createElement('div');
                     eventElement.className = 'event';
-                    eventElement.textContent = event.title;
+                    
+                    // Usar emoji/ícone ou título original
+                    const purposeType = purposeTypes[event.type];
+                    eventElement.textContent = purposeType ? purposeType.displayText : event.title;
+                    
                     eventElement.onclick = (e) => {
                         e.stopPropagation();
                         viewEvent(event);
@@ -709,7 +727,7 @@
             }
 
             modal.style.display = 'block';
-            document.getElementById('eventTitle').focus();
+            document.getElementById('eventType').focus();
         }
 
         function closeEventModal() {
@@ -720,13 +738,16 @@
             const modal = document.getElementById('viewEventModal');
             const content = document.getElementById('eventDetailsContent');
 
+            const purposeType = purposeTypes[event.type];
+            const displayTitle = purposeType ? `${purposeType.emoji} ${purposeType.title}` : event.title;
+
             content.innerHTML = `
                 <div class="event-details">
                     <div class="event-meta">
                         <span>📅 ${formatDate(event.date)}</span>
                         <span>👤 ${event.author}</span>
                     </div>
-                    <h3 style="margin-bottom: 15px; color: #333;">${event.title}</h3>
+                    <h3 style="margin-bottom: 15px; color: #333;">${displayTitle}</h3>
                     <div class="event-description">${event.description || 'Sem descrição'}</div>
                 </div>
                 <div class="btn-group">
@@ -745,28 +766,15 @@
         function editEvent(eventId) {
             closeViewEventModal();
 
-            // CORREÇÃO: buscar o evento corretamente
-            let event = null;
-            
-            // Buscar em events primeiro
-            if (events[eventId]) {
-                event = events[eventId];
-            } else {
-                // Se não encontrou em events, buscar pelos valores
-                event = Object.values(events).find(e => e.id === eventId);
-            }
-            
-            if (!event) {
-                showNotification('❌ Erro', 'Evento não encontrado', 'error');
-                return;
-            }
+            const event = events[eventId];
+            if (!event) return;
 
             editingEventId = eventId;
 
-            document.getElementById('eventTitle').value = event.title || '';
-            document.getElementById('eventDate').value = event.date || '';
+            document.getElementById('eventType').value = event.type || '';
+            document.getElementById('eventDate').value = event.date;
             document.getElementById('eventDescription').value = event.description || '';
-            document.getElementById('eventAuthor').value = event.author || '';
+            document.getElementById('eventAuthor').value = event.author;
 
             document.getElementById('modalTitle').textContent = 'Editar Propósito';
             document.getElementById('deleteBtn').style.display = 'block';
@@ -777,17 +785,7 @@
             if (!editingEventId) return;
 
             if (confirm('Tem certeza que deseja excluir este Propósito?')) {
-                // CORREÇÃO: encontrar a chave correta no Firebase
-                const eventKey = Object.keys(events).find(key => 
-                    key === editingEventId || events[key].id === editingEventId
-                );
-                
-                if (eventKey) {
-                    eventsRef.child(eventKey).remove();
-                } else {
-                    eventsRef.child(editingEventId).remove();
-                }
-                
+                eventsRef.child(editingEventId).remove();
                 closeEventModal();
             }
         }
@@ -796,61 +794,39 @@
         document.getElementById('eventForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
-            const title = document.getElementById('eventTitle').value;
+            const type = document.getElementById('eventType').value;
             const date = document.getElementById('eventDate').value;
             const description = document.getElementById('eventDescription').value;
             const author = document.getElementById('eventAuthor').value;
 
-            if (!title.trim()) {
-                showNotification('❌ Erro', 'Título é obrigatório', 'error');
-                return;
-            }
-
-            if (!date) {
-                showNotification('❌ Erro', 'Data é obrigatória', 'error');
-                return;
-            }
-
-            if (!author.trim()) {
-                showNotification('❌ Erro', 'Autor é obrigatório', 'error');
-                return;
-            }
+            const purposeType = purposeTypes[type];
+            const title = purposeType ? purposeType.title : type;
 
             const eventData = {
-                title: title.trim(),
+                type,
+                title,
                 date,
-                description: description.trim(),
-                author: author.trim(),
+                description,
+                author,
                 createdAt: new Date().toISOString()
             };
 
             if (editingEventId) {
-                // Editando um evento existente
-                const eventKey = Object.keys(events).find(key => 
-                    key === editingEventId || events[key].id === editingEventId
-                );
-                
-                if (eventKey) {
-                    eventData.id = events[eventKey].id || editingEventId;
-                    eventsRef.child(eventKey).update(eventData);
-                } else {
-                    eventData.id = editingEventId;
-                    eventsRef.child(editingEventId).update(eventData);
-                }
-                
+                // Edições são aplicadas diretamente (já aprovados)
+                eventsRef.child(editingEventId).update(eventData);
                 showNotification('✅ Propósito Salvo', 'Suas alterações foram aplicadas', 'success');
             } else {
-                // Novo propósito - adicionar diretamente
-                const newEventRef = eventsRef.push();
-                eventData.id = newEventRef.key;
-                newEventRef.set(eventData);
-                // A notificação será disparada pelo listener automaticamente
+                // Novos Propósitos vão para aprovação
+                const newPendingRef = pendingEventsRef.push();
+                eventData.id = newPendingRef.key;
+                newPendingRef.set(eventData);
+                // Removi a notificação daqui pois ela será disparada pelo listener
             }
 
             closeEventModal();
         });
 
-        // Fechar modais clicando fora
+        // Fechar modals clicando fora
         window.onclick = function (event) {
             const eventModal = document.getElementById('eventModal');
             const viewEventModal = document.getElementById('viewEventModal');
@@ -863,22 +839,8 @@
             }
         };
 
-        // Solicitar permissão de notificação ao carregar a página
-        document.addEventListener('DOMContentLoaded', async () => {
-            await requestNotificationPermission();
-            renderCalendar();
-        });
-
-        // Se a página já carregou, executar imediatamente
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', async () => {
-                await requestNotificationPermission();
-                renderCalendar();
-            });
-        } else {
-            requestNotificationPermission();
-            renderCalendar();
-        }
+        // Inicializar calendário
+        renderCalendar();
     </script>
 </body>
 
