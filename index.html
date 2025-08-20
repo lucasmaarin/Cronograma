@@ -547,6 +547,7 @@
         let currentDate = new Date();
         let events = {};
         let editingEventId = null;
+        let isInitialLoad = true;
 
         // Solicitar permissão para notificações
         if ('Notification' in window && Notification.permission === 'default') {
@@ -579,51 +580,39 @@
             }, 4000);
         }
 
-        // Referência para eventos pendentes
-        const pendingEventsRef = database.ref('pendingEvents');
-
         // Escutar mudanças no banco de dados
         eventsRef.on('value', (snapshot) => {
             const data = snapshot.val();
             events = data || {};
             renderCalendar();
-        });
-
-        eventsRef.on('child_added', (snapshot) => {
-            if (Object.keys(events).length > 0) { // Evita notificar no carregamento inicial
-                const event = snapshot.val();
-                const purposeType = purposeTypes[event.type] || { title: event.title };
-                showNotification('✅ Propósito Aprovado', `${purposeType.title} foi adicionado ao calendário`, 'success');
+            
+            // Marcar que o carregamento inicial foi concluído
+            if (isInitialLoad) {
+                isInitialLoad = false;
             }
         });
 
+        // Escutar eventos adicionados (apenas após carregamento inicial)
+        eventsRef.on('child_added', (snapshot) => {
+            if (!isInitialLoad) {
+                const event = snapshot.val();
+                const purposeType = purposeTypes[event.type] || { title: event.title };
+                showNotification('✅ Propósito Adicionado', `${purposeType.title} foi adicionado ao calendário`, 'success');
+            }
+        });
+
+        // Escutar eventos modificados
         eventsRef.on('child_changed', (snapshot) => {
             const event = snapshot.val();
             const purposeType = purposeTypes[event.type] || { title: event.title };
             showNotification('📝 Propósito Atualizado', `${purposeType.title} foi modificado`, 'info');
         });
 
+        // Escutar eventos removidos
         eventsRef.on('child_removed', (snapshot) => {
             const event = snapshot.val();
             const purposeType = purposeTypes[event.type] || { title: event.title };
             showNotification('🗑️ Propósito Removido', `${purposeType.title} foi excluído`, 'error');
-        });
-
-        // Variável para controlar se é o primeiro carregamento
-        let pendingEventsLoaded = false;
-
-        // Escutar eventos enviados para aprovação
-        pendingEventsRef.on('child_added', (snapshot) => {
-            if (pendingEventsLoaded) { // Só notifica após o carregamento inicial
-                const event = snapshot.val();
-                const purposeType = purposeTypes[event.type] || { title: event.title };
-                showNotification('⏳ Enviado para Aprovação', `${purposeType.title} aguarda análise`, 'info');
-            }
-        });
-
-        // Marcar como carregado após o primeiro load
-        pendingEventsRef.once('value', () => {
-            pendingEventsLoaded = true;
         });
 
         function formatDate(dateString) {
@@ -812,15 +801,13 @@
             };
 
             if (editingEventId) {
-                // Edições são aplicadas diretamente (já aprovados)
+                // Editando evento existente
                 eventsRef.child(editingEventId).update(eventData);
-                showNotification('✅ Propósito Salvo', 'Suas alterações foram aplicadas', 'success');
             } else {
-                // Novos Propósitos vão para aprovação
-                const newPendingRef = pendingEventsRef.push();
-                eventData.id = newPendingRef.key;
-                newPendingRef.set(eventData);
-                // Removi a notificação daqui pois ela será disparada pelo listener
+                // Criando novo evento - agora salva diretamente nos eventos
+                const newEventRef = eventsRef.push();
+                eventData.id = newEventRef.key;
+                newEventRef.set(eventData);
             }
 
             closeEventModal();
@@ -844,4 +831,4 @@
     </script>
 </body>
 
-</html>
+                </html>
